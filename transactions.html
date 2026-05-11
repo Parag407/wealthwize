@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WealthWize | Transactions</title>
+    <meta name="description" content="Complete transaction history for your portfolio">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-shell" id="app-shell"></div>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+    document.getElementById('app-shell').innerHTML =
+        getSidebarHTML() +
+        '<main class="main-content">' +
+            getTopBarHTML('Transactions', 'Full history of buys, sells & dividends') +
+            '<div class="bento-grid" id="bento-grid"></div>' +
+        '</main>' +
+        getFooterHTML() +
+        getProfileModalHTML();
+
+    function build() {
+        const buys = state.transactions.filter(t=>t.type==='buy');
+        const sells = state.transactions.filter(t=>t.type==='sell');
+        const divs = state.transactions.filter(t=>t.type==='dividend');
+        const totalBought = buys.reduce((s,t)=>s+t.total,0);
+        const totalSold = sells.reduce((s,t)=>s+t.total,0);
+        const totalDivs = divs.reduce((s,t)=>s+t.total,0);
+
+        document.getElementById('bento-grid').innerHTML = `
+        <!-- Stats -->
+        <div class="bento-card kpi-card" style="grid-column:span 3;grid-row:span 2;">
+            <div class="card-inner" style="justify-content:center;">
+                <p class="card-label">Total Bought</p>
+                <h3 class="card-value" style="font-size:22px;">${formatCurrency(totalBought)}</h3>
+                <p style="font-size:10px;color:var(--text-muted);margin-top:4px;">${buys.length} transactions</p>
+            </div>
+        </div>
+        <div class="bento-card kpi-card" style="grid-column:span 3;grid-row:span 2;">
+            <div class="card-inner" style="justify-content:center;">
+                <p class="card-label">Total Sold</p>
+                <h3 class="card-value" style="font-size:22px;color:var(--emerald);">${formatCurrency(totalSold)}</h3>
+                <p style="font-size:10px;color:var(--text-muted);margin-top:4px;">${sells.length} transactions</p>
+            </div>
+        </div>
+        <div class="bento-card kpi-card" style="grid-column:span 3;grid-row:span 2;">
+            <div class="card-inner" style="justify-content:center;">
+                <p class="card-label">Dividends Earned</p>
+                <h3 class="card-value gold-gradient" style="font-size:22px;">${formatCurrency(totalDivs)}</h3>
+                <p style="font-size:10px;color:var(--text-muted);margin-top:4px;">${divs.length} payouts</p>
+            </div>
+        </div>
+        <div class="bento-card kpi-card" style="grid-column:span 3;grid-row:span 2;">
+            <div class="card-inner" style="justify-content:center;">
+                <p class="card-label">Net Cash Flow</p>
+                <h3 class="card-value" style="font-size:22px;color:${(totalSold+totalDivs-totalBought)>=0?'var(--emerald)':'var(--red)'};">${formatCurrency(totalSold+totalDivs-totalBought)}</h3>
+            </div>
+        </div>
+
+        <!-- Flow Chart -->
+        <div class="bento-card" style="grid-column:span 8;grid-row:span 3;">
+            <div class="card-inner">
+                <p class="card-label">Cash Flow Over Time</p>
+                <div style="flex:1;min-height:220px;"><canvas id="flowChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Type Breakdown -->
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 3;">
+            <div class="card-inner">
+                <p class="card-label">Transaction Split</p>
+                <div style="flex:1;display:flex;align-items:center;justify-content:center;"><canvas id="typeChart" style="max-height:180px;"></canvas></div>
+                <div style="display:flex;gap:16px;justify-content:center;margin-top:12px;">
+                    <span style="font-size:10px;font-weight:700;display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--emerald);"></span>Buy</span>
+                    <span style="font-size:10px;font-weight:700;display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--red);"></span>Sell</span>
+                    <span style="font-size:10px;font-weight:700;display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--gold);"></span>Dividend</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Full Transaction Log -->
+        <div class="bento-card" style="grid-column:span 12;grid-row:span 5;">
+            <div class="card-inner">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+                    <h3 style="font-size:16px;font-weight:800;">Transaction Log</h3>
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn-ghost tx-filter active-filter" data-filter="all">All</button>
+                        <button class="btn-ghost tx-filter" data-filter="buy">Buys</button>
+                        <button class="btn-ghost tx-filter" data-filter="sell">Sells</button>
+                        <button class="btn-ghost tx-filter" data-filter="dividend">Dividends</button>
+                    </div>
+                </div>
+                <div style="overflow-x:auto;" class="custom-scrollbar">
+                    <table class="holdings-table" id="tx-table">
+                        <thead><tr><th>Type</th><th>Symbol</th><th>Date</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+                        <tbody id="tx-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>`;
+
+        renderTx('all');
+        initCharts(buys, sells, divs);
+        setupFilters();
+    }
+
+    function renderTx(filter) {
+        const txs = filter==='all' ? state.transactions : state.transactions.filter(t=>t.type===filter);
+        document.getElementById('tx-body').innerHTML = txs.map(tx => {
+            const iconMap = {buy:'arrow-down',sell:'arrow-up',dividend:'coins'};
+            const colorMap = {buy:'var(--emerald)',sell:'var(--red)',dividend:'var(--gold)'};
+            const bgMap = {buy:'rgba(16,185,129,0.1)',sell:'rgba(239,68,68,0.1)',dividend:'rgba(212,175,55,0.1)'};
+            return `<tr>
+                <td><div style="display:flex;align-items:center;gap:10px;">
+                    <div class="activity-icon" style="background:${bgMap[tx.type]};color:${colorMap[tx.type]};"><i class="fas fa-${iconMap[tx.type]}"></i></div>
+                    <span style="font-size:12px;font-weight:700;text-transform:uppercase;color:${colorMap[tx.type]};">${tx.type}</span>
+                </div></td>
+                <td><div style="display:flex;align-items:center;gap:8px;"><div class="stock-badge" style="width:30px;height:30px;font-size:8px;">${tx.symbol}</div><span style="font-size:13px;font-weight:700;">${tx.symbol}</span></div></td>
+                <td style="font-size:13px;font-weight:600;color:var(--text-muted);">${tx.date}</td>
+                <td style="font-size:13px;font-weight:700;">${tx.qty}</td>
+                <td style="font-size:13px;font-weight:600;">${formatCurrency(tx.price)}</td>
+                <td style="font-size:13px;font-weight:800;color:${tx.type==='sell'?'var(--emerald)':'var(--text-primary)'};">${formatCurrency(tx.total)}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function setupFilters() {
+        document.querySelectorAll('.tx-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tx-filter').forEach(b=>b.classList.remove('active-filter'));
+                btn.classList.add('active-filter');
+                renderTx(btn.dataset.filter);
+            });
+        });
+    }
+
+    function initCharts(buys, sells, divs) {
+        // Flow
+        const months = ['Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'];
+        const buyData = months.map(()=>Math.floor(Math.random()*20000+5000));
+        const sellData = months.map(()=>Math.floor(Math.random()*8000));
+        new Chart(document.getElementById('flowChart').getContext('2d'), {
+            type:'bar',
+            data:{labels:months,datasets:[
+                {label:'Buys',data:buyData,backgroundColor:COLORS.emerald+'88',borderRadius:6,barThickness:20},
+                {label:'Sells',data:sellData,backgroundColor:COLORS.red+'88',borderRadius:6,barThickness:20}
+            ]},
+            options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94A3B8',font:{size:10}}}},scales:{x:{grid:{display:false},ticks:{color:'#475569',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#475569',font:{size:10},callback:v=>'$'+v.toLocaleString()}}}}
+        });
+        // Type Donut
+        new Chart(document.getElementById('typeChart').getContext('2d'), {
+            type:'doughnut',
+            data:{labels:['Buy','Sell','Dividend'],datasets:[{data:[buys.length,sells.length,divs.length],backgroundColor:[COLORS.emerald,COLORS.red,COLORS.gold],borderWidth:0}]},
+            options:{responsive:true,cutout:'70%',plugins:{legend:{display:false}}}
+        });
+    }
+
+    initApp(); build();
+    </script>
+    <style>
+        .active-filter { background:rgba(212,175,55,0.15)!important; color:var(--gold)!important; border-color:var(--gold)!important; }
+        @media (max-width:1024px) { .bento-grid > * { grid-column:span 6!important; } }
+        @media (max-width:768px) { 
+            .bento-grid { grid-template-columns: repeat(2, 1fr) !important; }
+            .bento-grid > * { grid-column:span 2!important; } 
+            .bento-grid > .kpi-card { grid-column:span 1!important; }
+        }
+    </style>
+</body>
+</html>

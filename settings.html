@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WealthWize | Settings</title>
+    <meta name="description" content="Manage your account settings and preferences">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-shell" id="app-shell"></div>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+    document.getElementById('app-shell').innerHTML =
+        getSidebarHTML() +
+        '<main class="main-content">' +
+            getTopBarHTML('Settings', 'Account, goals & preferences') +
+            '<div class="bento-grid" id="bento-grid"></div>' +
+        '</main>' +
+        getFooterHTML() +
+        getProfileModalHTML();
+
+    function build() {
+        document.getElementById('bento-grid').innerHTML = `
+        <!-- Profile Card -->
+        <div class="bento-card" style="grid-column:span 6;grid-row:span 3;">
+            <div class="card-inner">
+                <p class="card-label">Account Profile</p>
+                <div style="display:flex;align-items:center;gap:20px;margin:20px 0;">
+                    <div style="position:relative;">
+                        <img id="settings-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=${state.user.seed}" style="width:72px;height:72px;border-radius:50%;border:2px solid rgba(212,175,55,0.3);background:rgba(16,185,129,0.2);">
+                        <button onclick="state.user.seed=Math.random().toString(36).substring(7);saveState();build();" style="position:absolute;bottom:0;right:0;width:26px;height:26px;background:linear-gradient(135deg,#D4AF37,#F9E79F);border:2px solid var(--bg-card);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--forest-green);font-size:9px;"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                    <div style="flex:1;">
+                        <div class="form-group" style="margin-bottom:12px;">
+                            <label class="form-label">Display Name</label>
+                            <input type="text" id="settings-name" class="form-input" value="${state.user.name}">
+                        </div>
+                        <button class="btn-gold" onclick="state.user.name=document.getElementById('settings-name').value;saveState();document.getElementById('sidebar-profile-name').textContent=state.user.name;" style="padding:10px 20px;">SAVE NAME</button>
+                    </div>
+                </div>
+                <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:14px;padding:16px;margin-top:12px;">
+                    <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;"><span>Tier</span><span style="color:var(--gold);">Platinum</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="font-size:12px;font-weight:600;">Member Since</span><span style="font-size:12px;font-weight:700;">Jan 2024</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Goals Management -->
+        <div class="bento-card" style="grid-column:span 6;grid-row:span 3;">
+            <div class="card-inner">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <p class="card-label" style="margin:0;">Financial Goals</p>
+                    <button class="btn-gold" style="padding:8px 16px;font-size:10px;" onclick="addGoal()"><i class="fas fa-plus"></i> ADD</button>
+                </div>
+                <div id="goals-list"></div>
+            </div>
+        </div>
+
+        <!-- Preferences -->
+        <div class="bento-card" style="grid-column:span 6;grid-row:span 3;">
+            <div class="card-inner">
+                <p class="card-label">Preferences</p>
+                <div style="margin-top:16px;">
+                    ${[
+                        {label:'Live Price Updates',desc:'Auto-refresh stock prices every 3.5s',key:'liveUpdates',checked:true},
+                        {label:'News Ticker',desc:'Show scrolling market news at the bottom',key:'newsTicker',checked:true},
+                        {label:'Portfolio Animations',desc:'Smooth entry animations for cards',key:'animations',checked:true},
+                        {label:'Compact Mode',desc:'Reduce spacing for more data density',key:'compact',checked:false},
+                    ].map(p => `
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                        <div><p style="font-size:13px;font-weight:700;">${p.label}</p><p style="font-size:10px;color:var(--text-muted);">${p.desc}</p></div>
+                        <label style="position:relative;width:44px;height:24px;cursor:pointer;">
+                            <input type="checkbox" ${p.checked?'checked':''} style="display:none;" onchange="this.parentElement.querySelector('span').style.background=this.checked?'var(--gold)':'rgba(255,255,255,0.1)'">
+                            <span style="position:absolute;inset:0;background:${p.checked?'var(--gold)':'rgba(255,255,255,0.1)'};border-radius:12px;transition:background 0.3s;"></span>
+                            <span style="position:absolute;top:3px;left:${p.checked?'23px':'3px'};width:18px;height:18px;background:white;border-radius:50%;transition:left 0.3s;"></span>
+                        </label>
+                    </div>`).join('')}
+                </div>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="bento-card" style="grid-column:span 6;grid-row:span 3;">
+            <div class="card-inner">
+                <p class="card-label" style="color:var(--red);">Danger Zone</p>
+                <div style="margin-top:16px;">
+                    <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:14px;padding:20px;margin-bottom:14px;">
+                        <p style="font-size:13px;font-weight:700;margin-bottom:4px;">Reset Portfolio</p>
+                        <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">Restore portfolio to default sample holdings.</p>
+                        <button class="btn-ghost" style="border-color:rgba(239,68,68,0.3);color:var(--red);" onclick="if(confirm('Reset portfolio to defaults?')){state.portfolio=[...defaultPortfolio];state.transactions=[...defaultTransactions];saveState();alert('Reset complete!');}">RESET PORTFOLIO</button>
+                    </div>
+                    <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:14px;padding:20px;">
+                        <p style="font-size:13px;font-weight:700;margin-bottom:4px;">Clear All Data</p>
+                        <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">Remove all saved data including portfolio, watchlist, and alerts.</p>
+                        <button class="btn-ghost" style="border-color:rgba(239,68,68,0.3);color:var(--red);" onclick="if(confirm('Delete ALL data? This cannot be undone.')){localStorage.removeItem('wealthwize_v2');location.reload();}">DELETE ALL DATA</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export -->
+        <div class="bento-card" style="grid-column:span 12;grid-row:span 2;">
+            <div class="card-inner">
+                <p class="card-label">Data Management</p>
+                <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:16px;">
+                    <button class="btn-gold" onclick="exportData()"><i class="fas fa-download"></i> EXPORT JSON</button>
+                    <label class="btn-ghost" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+                        <i class="fas fa-upload"></i> IMPORT JSON
+                        <input type="file" accept=".json" style="display:none;" onchange="importData(event)">
+                    </label>
+                    <button class="btn-ghost" onclick="exportCSV()"><i class="fas fa-file-csv"></i> EXPORT CSV</button>
+                </div>
+            </div>
+        </div>`;
+
+        renderGoals();
+    }
+
+    function renderGoals() {
+        document.getElementById('goals-list').innerHTML = state.goals.map((g, i) => {
+            const pct = Math.min(((g.current/g.target)*100), 100).toFixed(0);
+            return `
+            <div style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span style="font-size:13px;font-weight:700;">${g.name}</span>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <span style="font-size:11px;font-weight:700;color:var(--gold);">${formatCurrency(g.current)} / ${formatCurrency(g.target)}</span>
+                        <button class="icon-btn danger" onclick="state.goals.splice(${i},1);saveState();build();"><i class="fas fa-times" style="font-size:10px;"></i></button>
+                    </div>
+                </div>
+                <div class="alloc-bar"><div class="alloc-bar-fill" style="width:${pct}%;background:${g.color};"></div></div>
+            </div>`;
+        }).join('') || '<p style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px;">No goals set.</p>';
+    }
+
+    function addGoal() {
+        const name = prompt('Goal name:');
+        if (!name) return;
+        const target = parseFloat(prompt('Target amount ($):'));
+        if (!target || target <= 0) return;
+        const current = parseFloat(prompt('Current progress ($):')) || 0;
+        const colors = ['#D4AF37','#10B981','#818CF8','#F59E0B','#06B6D4'];
+        state.goals.push({ name, target, current, color: colors[state.goals.length % colors.length] });
+        saveState(); build();
+    }
+
+    function exportData() {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = 'wealthwize_backup.json'; a.click();
+    }
+
+    function importData(e) {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                Object.assign(state, data);
+                saveState(); build(); alert('Data imported successfully!');
+            } catch { alert('Invalid JSON file.'); }
+        };
+        reader.readAsText(file);
+    }
+
+    function exportCSV() {
+        let csv = 'Symbol,Qty,AvgCost,Sector\n';
+        state.portfolio.forEach(p => { const m = getStockMeta(p.symbol); csv += `${p.symbol},${p.qty},${p.avgCost},${m.sector}\n`; });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'portfolio.csv'; a.click();
+    }
+
+    initApp(); build();
+    </script>
+    <style>
+        @media (max-width:1024px) { .bento-grid > * { grid-column:span 6!important; } }
+        @media (max-width:768px) { .bento-grid > * { grid-column:span 1!important; } }
+    </style>
+</body>
+</html>

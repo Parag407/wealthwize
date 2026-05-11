@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WealthWize | Dashboard</title>
+    <meta name="description" content="WealthWize Portfolio Intelligence Dashboard - Track your investments in real-time">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-shell" id="app-shell"></div>
+
+    <!-- Add Asset Modal -->
+    <div id="add-asset-modal" class="modal-overlay" style="opacity:0;transition:opacity 0.3s">
+        <div class="modal-box" style="transform:scale(0.95);transition:transform 0.3s">
+            <div class="modal-header">
+                <h3 id="modal-title">Record Holding</h3>
+                <button class="modal-close" onclick="closeModal('add-asset-modal')"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="stock-search-container" class="form-group" style="position:relative;">
+                <label class="form-label">Search Stock Symbol</label>
+                <input type="text" id="stock-search-input" class="form-input" placeholder="e.g. AAPL, NVDA..." autocomplete="off">
+                <div id="stock-suggestions" class="suggestions-dropdown custom-scrollbar"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div class="form-group"><label class="form-label">Quantity</label><input type="number" id="asset-qty" class="form-input" value="1" min="0.01" step="any"></div>
+                <div class="form-group"><label class="form-label">Buy Price</label><input type="number" id="asset-buy-price" class="form-input" placeholder="0.00"></div>
+            </div>
+            <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:14px;padding:16px;margin-bottom:20px;">
+                <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">
+                    <span>Transaction Value</span><span id="investment-preview-label">0.00</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                    <span style="font-size:12px;color:var(--text-muted);" id="selected-stock-display">No stock selected</span>
+                    <span style="font-size:20px;font-weight:800;color:var(--gold);" id="total-investment-display">$0.00</span>
+                </div>
+            </div>
+            <button id="save-asset-btn" class="btn-gold" style="width:100%;justify-content:center;padding:14px;" disabled>CONFIRM & SAVE</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+    /* ═══ Build Page ═══ */
+    document.getElementById('app-shell').innerHTML =
+        getSidebarHTML() +
+        '<main class="main-content">' +
+            getTopBarHTML('Dashboard', 'Real-time portfolio overview') +
+            '<div class="bento-grid" id="bento-grid"></div>' +
+        '</main>' +
+        getFooterHTML() +
+        getProfileModalHTML();
+
+    /* ═══ Dashboard Bento Layout ═══ */
+    function buildDashboard() {
+        const pv = getPortfolioValue();
+        const pi = getPortfolioInvested();
+        const pr = pv - pi;
+        const prPct = pi > 0 ? ((pr / pi) * 100).toFixed(2) : 0;
+        const top = getTopPerformer();
+        const sectors = getSectorAllocation();
+        const sectorColors = ['#D4AF37','#10B981','#818CF8','#F59E0B','#EF4444','#06B6D4'];
+
+        document.getElementById('bento-grid').innerHTML = `
+        <!-- Net Worth — spans 8 cols, 4 rows -->
+        <div class="bento-card" style="grid-column:span 8;grid-row:span 4;">
+            <div class="card-inner">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:20px;">
+                    <div>
+                        <p class="card-label">Consolidated Net Worth</p>
+                        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
+                            <h2 class="card-value gold-gradient" id="total-balance">${formatCurrency(pv)}</h2>
+                            <span class="${pr >= 0 ? 'tag-green' : 'tag-red'}">${pr >= 0 ? '+' : ''}${formatCurrency(pr)} (${prPct}%)</span>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn-ghost chart-range-btn active-range" data-range="1Y">1Y</button>
+                        <button class="btn-ghost chart-range-btn" data-range="6M">6M</button>
+                        <button class="btn-ghost chart-range-btn" data-range="1M">1M</button>
+                    </div>
+                </div>
+                <div style="flex:1;min-height:260px;"><canvas id="portfolioChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Quick Stats — 4 cols -->
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 2;">
+            <div class="card-inner">
+                <p class="card-label">Total Invested</p>
+                <h3 class="card-value" style="font-size:24px;margin-bottom:12px;">${formatCurrency(pi)}</h3>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--glass);border-radius:12px;border:1px solid var(--glass-border);">
+                    <span style="font-size:11px;font-weight:700;color:var(--text-muted);">Assets Held</span>
+                    <span style="font-size:18px;font-weight:800;color:var(--gold);">${state.portfolio.length}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Mood -->
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 2;">
+            <div class="card-inner" style="justify-content:center;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <p class="card-label">Market Mood</p>
+                        <p style="font-size:22px;font-weight:800;color:var(--emerald);">Greed <span style="font-size:13px;color:var(--text-muted);font-weight:700;margin-left:8px;">74/100</span></p>
+                    </div>
+                    <div class="stat-icon" style="background:rgba(16,185,129,0.1);color:var(--emerald);"><i class="fas fa-gauge-high"></i></div>
+                </div>
+                <div class="alloc-bar" style="margin-top:14px;"><div class="alloc-bar-fill" style="width:74%;background:var(--emerald);"></div></div>
+            </div>
+        </div>
+
+        <!-- Top Performer -->
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 2;">
+            <div class="card-inner">
+                <p class="card-label">Top Performer</p>
+                ${top ? `
+                <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
+                    <div class="stock-badge">${top.symbol}</div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;">${top.name}</p>
+                        <p style="font-size:11px;color:var(--text-muted);">${top.sector}</p>
+                    </div>
+                </div>
+                <p style="font-size:24px;font-weight:800;color:var(--emerald);margin-top:12px;">+${top.returnPct.toFixed(1)}%</p>
+                ` : '<p style="color:var(--text-muted);font-size:13px;">No holdings yet</p>'}
+            </div>
+        </div>
+
+        <!-- Indices -->
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 2;">
+            <div class="card-inner">
+                <p class="card-label">Market Indices</p>
+                <div style="display:flex;flex-direction:column;gap:4px;margin-top:8px;">
+                    ${[
+                        {n:'S&P 500',v:'5,204.34',c:'+0.42%',up:true},
+                        {n:'NIFTY 50',v:'22,453.10',c:'+0.85%',up:true},
+                        {n:'NASDAQ 100',v:'16,248.52',c:'-0.24%',up:false}
+                    ].map(idx => `
+                    <div class="watchlist-item">
+                        <div><p style="font-size:13px;font-weight:700;">${idx.n}</p></div>
+                        <div style="text-align:right;">
+                            <p style="font-size:13px;font-weight:700;color:${idx.up?'var(--emerald)':'var(--red)'};">${idx.v}</p>
+                            <p style="font-size:10px;color:${idx.up?'var(--emerald)':'var(--red)'};">${idx.c}</p>
+                        </div>
+                    </div>`).join('')}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sector Allocation -->
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 3;">
+            <div class="card-inner">
+                <p class="card-label">Sector Allocation</p>
+                <div style="flex:1;display:flex;align-items:center;justify-content:center;"><canvas id="sectorChart" style="max-height:180px;"></canvas></div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+                    ${sectors.map((s,i) => `<span style="font-size:10px;font-weight:700;color:${sectorColors[i%sectorColors.length]};display:flex;align-items:center;gap:4px;">
+                        <span style="width:8px;height:8px;border-radius:50%;background:${sectorColors[i%sectorColors.length]};"></span>${s.name} ${s.pct}%
+                    </span>`).join('')}
+                </div>
+            </div>
+        </div>
+
+        <!-- Holdings Table -->
+        <div class="bento-card" style="grid-column:span 8;grid-row:span 3;">
+            <div class="card-inner">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <h3 style="font-size:16px;font-weight:800;">My Holdings</h3>
+                        <span class="nav-badge">${state.portfolio.length} ASSETS</span>
+                    </div>
+                    <button class="btn-gold" onclick="openAddAssetModal()"><i class="fas fa-plus"></i> ADD ASSET</button>
+                </div>
+                <div style="overflow-x:auto;" class="custom-scrollbar">
+                    <table class="holdings-table">
+                        <thead><tr>
+                            <th>Stock</th><th>Qty</th><th>Avg Cost</th><th>LTP</th><th>Day Gain</th><th>Returns</th><th style="text-align:right;">Action</th>
+                        </tr></thead>
+                        <tbody id="holdings-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Goals -->
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 2;">
+            <div class="card-inner">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <p class="card-label" style="margin:0;">Financial Goals</p>
+                    <a href="./settings.html" style="font-size:10px;font-weight:700;color:var(--gold);text-decoration:none;">Manage →</a>
+                </div>
+                ${state.goals.map(g => {
+                    const pct = ((g.current / g.target) * 100).toFixed(0);
+                    return `<div style="margin-bottom:14px;">
+                        <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:4px;">
+                            <span>${g.name}</span><span style="color:var(--text-muted);">${pct}%</span>
+                        </div>
+                        <div class="alloc-bar"><div class="alloc-bar-fill" style="width:${pct}%;background:${g.color};"></div></div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 2;">
+            <div class="card-inner">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <p class="card-label" style="margin:0;">Recent Activity</p>
+                    <a href="./transactions.html" style="font-size:10px;font-weight:700;color:var(--gold);text-decoration:none;">View All →</a>
+                </div>
+                ${state.transactions.slice(0,4).map(tx => `
+                <div class="activity-item">
+                    <div class="activity-icon" style="background:${tx.type==='buy'?'rgba(16,185,129,0.1)':tx.type==='sell'?'rgba(239,68,68,0.1)':'rgba(212,175,55,0.1)'};color:${tx.type==='buy'?'var(--emerald)':tx.type==='sell'?'var(--red)':'var(--gold)'};">
+                        <i class="fas fa-${tx.type==='buy'?'arrow-down':tx.type==='sell'?'arrow-up':'coins'}"></i>
+                    </div>
+                    <div style="flex:1;">
+                        <p style="font-size:12px;font-weight:700;">${tx.type.toUpperCase()} ${tx.symbol}</p>
+                        <p style="font-size:10px;color:var(--text-muted);">${tx.date}</p>
+                    </div>
+                    <span style="font-size:13px;font-weight:700;color:${tx.type==='sell'?'var(--emerald)':'var(--text-primary)'};">${formatCurrency(tx.total)}</span>
+                </div>`).join('')}
+            </div>
+        </div>
+
+        <!-- Watchlist Quick -->
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 2;">
+            <div class="card-inner">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <p class="card-label" style="margin:0;">Watchlist</p>
+                    <a href="./watchlist.html" style="font-size:10px;font-weight:700;color:var(--gold);text-decoration:none;">View All →</a>
+                </div>
+                ${state.watchlist.slice(0,5).map(sym => {
+                    const s = getStockMeta(sym);
+                    return `<div class="watchlist-item">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div class="stock-badge" style="width:30px;height:30px;font-size:8px;">${s.symbol}</div>
+                            <div><p style="font-size:12px;font-weight:700;">${s.name}</p><p style="font-size:9px;color:var(--text-muted);">${s.sector}</p></div>
+                        </div>
+                        <div style="text-align:right;">
+                            <p style="font-size:12px;font-weight:700;" id="ltp-${s.symbol}">${formatCurrency(s.ltp)}</p>
+                            <p style="font-size:10px;color:${s.change>=0?'var(--emerald)':'var(--red)'};">${s.change>=0?'+':''}${s.change.toFixed(2)}</p>
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+
+        renderHoldings();
+        initPortfolioChart();
+        initSectorChart(sectors, sectorColors);
+    }
+
+    /* ═══ Holdings Table ═══ */
+    function renderHoldings() {
+        const tbody = document.getElementById('holdings-table');
+        tbody.innerHTML = state.portfolio.map((item, i) => {
+            const m = getStockMeta(item.symbol);
+            const inv = item.qty * item.avgCost;
+            const cur = item.qty * m.ltp;
+            const ret = cur - inv;
+            const retP = inv > 0 ? ((ret / inv) * 100).toFixed(1) : 0;
+            return `<tr>
+                <td><div style="display:flex;align-items:center;gap:10px;"><div class="stock-badge">${item.symbol}</div><div><p style="font-size:13px;font-weight:700;">${m.name}</p><p style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">${m.sector}</p></div></div></td>
+                <td style="font-size:13px;font-weight:700;">${item.qty}</td>
+                <td style="font-size:13px;font-weight:600;color:var(--text-muted);">${formatCurrency(item.avgCost)}</td>
+                <td style="font-size:13px;font-weight:800;" id="ltp-${item.symbol}">${formatCurrency(m.ltp)}</td>
+                <td style="font-size:13px;font-weight:700;color:${m.change>=0?'var(--emerald)':'var(--red)'};">${m.change>=0?'+':''}${m.change.toFixed(2)}</td>
+                <td><p style="font-size:13px;font-weight:800;color:${ret>=0?'var(--emerald)':'var(--red)'};">${ret>=0?'+':''}${formatCurrency(ret)}</p><p style="font-size:10px;font-weight:600;color:${ret>=0?'var(--emerald)':'var(--red)'};">${retP}%</p></td>
+                <td style="text-align:right;"><button class="icon-btn" onclick="editAsset(${i})"><i class="fas fa-edit"></i></button><button class="icon-btn danger" onclick="deleteAsset(${i})"><i class="fas fa-trash"></i></button></td>
+            </tr>`;
+        }).join('');
+    }
+
+    /* ═══ Charts ═══ */
+    let mainChart, sectorChartInst;
+
+    function initPortfolioChart() {
+        const ctx = document.getElementById('portfolioChart').getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 0, 350);
+        grad.addColorStop(0, 'rgba(212,175,55,0.18)'); grad.addColorStop(1, 'transparent');
+        mainChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], datasets: [{
+                data: [640,655,630,680,710,690,740,780,810,790,830,842], borderColor: COLORS.gold, borderWidth: 3, pointRadius: 0, tension: 0.4, fill: true, backgroundColor: grad
+            }]},
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                scales: { x: { grid: { display: false }, ticks: { color: '#475569', font: { size: 10 } } }, y: { border: { display: false }, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { display: false } } } }
+        });
+    }
+
+    function initSectorChart(sectors, colors) {
+        const ctx = document.getElementById('sectorChart').getContext('2d');
+        sectorChartInst = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: sectors.map(s => s.name), datasets: [{ data: sectors.map(s => s.value), backgroundColor: colors.slice(0, sectors.length), borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: true, cutout: '70%', plugins: { legend: { display: false } } }
+        });
+    }
+
+    /* ═══ CRUD ═══ */
+    let selectedStockForEntry = null, editingAssetIndex = -1;
+
+    function openAddAssetModal() {
+        editingAssetIndex = -1; selectedStockForEntry = null;
+        document.getElementById('modal-title').textContent = 'Record Holding';
+        document.getElementById('stock-search-container').style.display = '';
+        document.getElementById('stock-search-input').value = '';
+        document.getElementById('asset-qty').value = 1;
+        document.getElementById('asset-buy-price').value = '';
+        document.getElementById('selected-stock-display').textContent = 'No stock selected';
+        document.getElementById('total-investment-display').textContent = '$0.00';
+        document.getElementById('save-asset-btn').disabled = true;
+        openModal('add-asset-modal');
+    }
+
+    function editAsset(i) {
+        editingAssetIndex = i;
+        const a = state.portfolio[i];
+        selectedStockForEntry = getStockMeta(a.symbol);
+        document.getElementById('modal-title').textContent = 'Edit Holding';
+        document.getElementById('stock-search-container').style.display = 'none';
+        document.getElementById('asset-qty').value = a.qty;
+        document.getElementById('asset-buy-price').value = a.avgCost;
+        document.getElementById('selected-stock-display').textContent = `${selectedStockForEntry.name} (${a.symbol})`;
+        calcInvestment();
+        openModal('add-asset-modal');
+    }
+
+    function deleteAsset(i) { state.portfolio.splice(i, 1); saveState(); buildDashboard(); }
+
+    function calcInvestment() {
+        const q = parseFloat(document.getElementById('asset-qty').value) || 0;
+        const p = parseFloat(document.getElementById('asset-buy-price').value) || 0;
+        document.getElementById('total-investment-display').textContent = formatCurrency(q * p);
+        document.getElementById('save-asset-btn').disabled = !selectedStockForEntry || q <= 0 || p <= 0;
+    }
+
+    /* ═══ Search ═══ */
+    document.getElementById('stock-search-input').addEventListener('input', e => {
+        const v = e.target.value.toUpperCase(), box = document.getElementById('stock-suggestions');
+        box.innerHTML = '';
+        if (!v) { box.classList.remove('show'); return; }
+        const f = stockMaster.filter(s => s.symbol.includes(v) || s.name.toUpperCase().includes(v));
+        if (f.length) {
+            box.classList.add('show');
+            f.forEach(s => {
+                const d = document.createElement('div');
+                d.className = 'suggestion-item';
+                d.innerHTML = `<span><strong>${s.symbol}</strong> — ${s.name}</span><span style="font-size:11px;color:var(--text-muted);">${formatCurrency(s.ltp)}</span>`;
+                d.onclick = () => {
+                    selectedStockForEntry = s;
+                    e.target.value = s.symbol;
+                    document.getElementById('asset-buy-price').value = s.ltp;
+                    document.getElementById('selected-stock-display').textContent = `${s.name} (${s.symbol})`;
+                    box.classList.remove('show');
+                    calcInvestment();
+                };
+                box.appendChild(d);
+            });
+        } else box.classList.remove('show');
+    });
+
+    document.getElementById('asset-qty').addEventListener('input', calcInvestment);
+    document.getElementById('asset-buy-price').addEventListener('input', calcInvestment);
+
+    document.getElementById('save-asset-btn').onclick = () => {
+        const q = parseFloat(document.getElementById('asset-qty').value);
+        const p = parseFloat(document.getElementById('asset-buy-price').value);
+        if (editingAssetIndex > -1) {
+            state.portfolio[editingAssetIndex].qty = q;
+            state.portfolio[editingAssetIndex].avgCost = p;
+        } else {
+            const ex = state.portfolio.find(x => x.symbol === selectedStockForEntry.symbol);
+            if (ex) { const tc = (ex.qty*ex.avgCost)+(q*p); ex.qty += q; ex.avgCost = tc/ex.qty; }
+            else state.portfolio.push({ symbol: selectedStockForEntry.symbol, qty: q, avgCost: p, buyDate: new Date().toISOString().split('T')[0] });
+        }
+        saveState(); closeModal('add-asset-modal'); buildDashboard();
+    };
+
+    /* ═══ Chart range buttons ═══ */
+    document.addEventListener('click', e => {
+        if (e.target.classList.contains('chart-range-btn')) {
+            document.querySelectorAll('.chart-range-btn').forEach(b => b.classList.remove('active-range'));
+            e.target.classList.add('active-range');
+        }
+    });
+
+    /* ═══ Init ═══ */
+    initApp();
+    buildDashboard();
+    </script>
+
+    <style>
+        .active-range { background: rgba(212,175,55,0.15) !important; color: var(--gold) !important; border-color: var(--gold) !important; }
+        @media (max-width:1024px) {
+            .bento-grid > * { grid-column: span 6 !important; }
+        }
+        @media (max-width:768px) {
+            .bento-grid > * { grid-column: span 1 !important; }
+        }
+    </style>
+</body>
+</html>

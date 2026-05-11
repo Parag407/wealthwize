@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WealthWize | Watchlist</title>
+    <meta name="description" content="Track your favorite stocks and crypto in real-time">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-shell" id="app-shell"></div>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+    document.getElementById('app-shell').innerHTML =
+        getSidebarHTML() +
+        '<main class="main-content">' +
+            getTopBarHTML('Watchlist', 'Track your favorite instruments') +
+            '<div class="bento-grid" id="bento-grid"></div>' +
+        '</main>' +
+        getFooterHTML() +
+        getProfileModalHTML() +
+        `<div id="add-watch-modal" class="modal-overlay" style="opacity:0;transition:opacity 0.3s">
+            <div class="modal-box" style="transform:scale(0.95);transition:transform 0.3s">
+                <div class="modal-header"><h3>Add to Watchlist</h3><button class="modal-close" onclick="closeModal('add-watch-modal')"><i class="fas fa-times"></i></button></div>
+                <div class="form-group" style="position:relative;">
+                    <label class="form-label">Search Stock</label>
+                    <input type="text" id="watch-search" class="form-input" placeholder="e.g. AAPL, NVDA..." autocomplete="off">
+                    <div id="watch-suggestions" class="suggestions-dropdown custom-scrollbar"></div>
+                </div>
+            </div>
+        </div>`;
+
+    function build() {
+        const items = state.watchlist.map(sym => { const m = getStockMeta(sym); return { sym, ...m }; });
+        const sectors = {};
+        items.forEach(i => { sectors[i.sector] = (sectors[i.sector]||0) + 1; });
+
+        document.getElementById('bento-grid').innerHTML = `
+        <!-- Summary -->
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 2;">
+            <div class="card-inner" style="justify-content:center;">
+                <p class="card-label">Tracking</p>
+                <h3 class="card-value gold-gradient" style="font-size:32px;">${state.watchlist.length}</h3>
+                <p style="font-size:11px;color:var(--text-muted);font-weight:600;margin-top:4px;">Instruments on watchlist</p>
+            </div>
+        </div>
+
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 2;">
+            <div class="card-inner" style="justify-content:center;">
+                <p class="card-label">Biggest Mover</p>
+                ${(() => { const best = items.reduce((a,b) => Math.abs(b.change)>Math.abs(a.change)?b:a, items[0]);
+                    return best ? `<div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+                        <div class="stock-badge">${best.symbol}</div>
+                        <div><p style="font-size:14px;font-weight:700;">${best.name}</p>
+                        <p style="font-size:12px;font-weight:700;color:${best.change>=0?'var(--emerald)':'var(--red)'};">${best.change>=0?'+':''}${best.change.toFixed(2)}</p></div>
+                    </div>` : '';
+                })()}
+            </div>
+        </div>
+
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 2;">
+            <div class="card-inner" style="justify-content:center;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <p class="card-label">Sectors Tracked</p>
+                        <h3 class="card-value" style="font-size:28px;">${Object.keys(sectors).length}</h3>
+                    </div>
+                    <button class="btn-gold" onclick="openModal('add-watch-modal')"><i class="fas fa-plus"></i> ADD</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Watchlist Cards -->
+        <div class="bento-card" style="grid-column:span 12;grid-row:span 5;">
+            <div class="card-inner">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+                    <h3 style="font-size:16px;font-weight:800;">All Watchlist Items</h3>
+                    <div style="display:flex;gap:6px;" id="sector-filters">
+                        <button class="btn-ghost filter-btn active-filter" data-filter="all">All</button>
+                        ${Object.keys(sectors).map(s => `<button class="btn-ghost filter-btn" data-filter="${s}">${s}</button>`).join('')}
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;" id="watch-cards"></div>
+            </div>
+        </div>
+
+        <!-- Mini charts row -->
+        <div class="bento-card" style="grid-column:span 12;grid-row:span 3;">
+            <div class="card-inner">
+                <p class="card-label">Price Trends (Simulated)</p>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-top:12px;" id="mini-charts"></div>
+            </div>
+        </div>`;
+
+        renderCards(items);
+        renderMiniCharts(items);
+        setupFilters(items);
+    }
+
+    function renderCards(items, filter='all') {
+        const filtered = filter==='all' ? items : items.filter(i => i.sector===filter);
+        document.getElementById('watch-cards').innerHTML = filtered.map(i => `
+        <div class="watch-card" data-sector="${i.sector}" style="background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:20px;transition:all 0.3s;" onmouseenter="this.style.borderColor='rgba(212,175,55,0.4)'" onmouseleave="this.style.borderColor='var(--glass-border)'">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div class="stock-badge">${i.symbol}</div>
+                    <div><p style="font-size:14px;font-weight:700;">${i.name}</p><p style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">${i.sector}</p></div>
+                </div>
+                <button class="icon-btn danger" onclick="removeWatch('${i.sym}')"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:16px;">
+                <p style="font-size:22px;font-weight:800;" id="ltp-${i.symbol}">${formatCurrency(i.ltp)}</p>
+                <span class="${i.change>=0?'tag-green':'tag-red'}">${i.change>=0?'+':''}${i.change.toFixed(2)}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;">
+                <div style="background:rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px;">
+                    <p style="font-size:8px;font-weight:800;color:var(--text-muted);text-transform:uppercase;">P/E</p>
+                    <p style="font-size:13px;font-weight:700;">${i.pe || 'N/A'}</p>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px;">
+                    <p style="font-size:8px;font-weight:800;color:var(--text-muted);text-transform:uppercase;">Mkt Cap</p>
+                    <p style="font-size:13px;font-weight:700;">${i.mktCap || 'N/A'}</p>
+                </div>
+            </div>
+        </div>`).join('');
+    }
+
+    function renderMiniCharts(items) {
+        const container = document.getElementById('mini-charts');
+        container.innerHTML = items.slice(0,6).map(i => `
+        <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:12px;padding:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:12px;font-weight:700;">${i.symbol}</span>
+                <span style="font-size:10px;font-weight:700;color:${i.change>=0?'var(--emerald)':'var(--red)'};">${i.change>=0?'+':''}${i.change.toFixed(1)}</span>
+            </div>
+            <div style="height: 60px; position: relative; width: 100%;">
+                <canvas id="mini-${i.symbol}"></canvas>
+            </div>
+        </div>`).join('');
+
+        items.slice(0,6).forEach(i => {
+            const canvas = document.getElementById('mini-'+i.symbol);
+            if (!canvas) return;
+            const data = Array.from({length:20}, (_,j) => i.ltp * (1 + (Math.sin(j*0.5)+Math.random()*0.5-0.25)*0.01));
+            const ctx = canvas.getContext('2d');
+            const g = ctx.createLinearGradient(0,0,0,60);
+            const c = i.change>=0 ? COLORS.emerald : COLORS.red;
+            g.addColorStop(0, c+'33'); g.addColorStop(1, 'transparent');
+            new Chart(ctx, { type:'line', data:{ labels:data.map((_,j)=>j), datasets:[{ data, borderColor:c, borderWidth:1.5, pointRadius:0, tension:0.4, fill:true, backgroundColor:g }] },
+                options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}} } });
+        });
+    }
+
+    function setupFilters(items) {
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active-filter'));
+                btn.classList.add('active-filter');
+                renderCards(items, btn.dataset.filter);
+            });
+        });
+    }
+
+    function removeWatch(sym) {
+        state.watchlist = state.watchlist.filter(s => s !== sym);
+        saveState(); build();
+    }
+
+    // Add to watchlist search
+    document.getElementById('watch-search').addEventListener('input', e => {
+        const v = e.target.value.toUpperCase(), box = document.getElementById('watch-suggestions');
+        box.innerHTML = '';
+        if (!v) { box.classList.remove('show'); return; }
+        const f = stockMaster.filter(s => (s.symbol.includes(v)||s.name.toUpperCase().includes(v)) && !state.watchlist.includes(s.symbol));
+        if (f.length) {
+            box.classList.add('show');
+            f.forEach(s => {
+                const d = document.createElement('div'); d.className='suggestion-item';
+                d.innerHTML = `<span><strong>${s.symbol}</strong> — ${s.name}</span><span style="font-size:11px;color:var(--text-muted);">${formatCurrency(s.ltp)}</span>`;
+                d.onclick = () => { state.watchlist.push(s.symbol); saveState(); closeModal('add-watch-modal'); build(); };
+                box.appendChild(d);
+            });
+        } else box.classList.remove('show');
+    });
+
+    initApp(); build();
+    </script>
+    <style>
+        .active-filter { background:rgba(212,175,55,0.15)!important; color:var(--gold)!important; border-color:var(--gold)!important; }
+        @media (max-width:1024px) { .bento-grid > * { grid-column:span 6!important; } }
+        @media (max-width:768px) { 
+            .bento-grid > * { grid-column:span 1!important; } 
+            #mini-charts { grid-template-columns: 1fr !important; }
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WealthWize | Portfolio</title>
+    <meta name="description" content="Manage your full stock portfolio with detailed holdings analysis">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-shell" id="app-shell"></div>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+    document.getElementById('app-shell').innerHTML =
+        getSidebarHTML() +
+        '<main class="main-content">' +
+            getTopBarHTML('Portfolio', 'Detailed holdings & performance analysis') +
+            '<div class="bento-grid" id="bento-grid"></div>' +
+        '</main>' +
+        getFooterHTML() +
+        getProfileModalHTML();
+
+    function build() {
+        const pv = getPortfolioValue(), pi = getPortfolioInvested(), pr = pv - pi;
+        const prPct = pi > 0 ? ((pr/pi)*100).toFixed(2) : 0;
+        const sectors = getSectorAllocation();
+        const sColors = ['#D4AF37','#10B981','#818CF8','#F59E0B','#EF4444','#06B6D4'];
+
+        // Per-asset details
+        const details = state.portfolio.map(item => {
+            const m = getStockMeta(item.symbol);
+            const inv = item.qty * item.avgCost, cur = item.qty * m.ltp, ret = cur - inv;
+            const pct = inv > 0 ? ((ret/inv)*100).toFixed(1) : 0;
+            const weight = pv > 0 ? ((cur/pv)*100).toFixed(1) : 0;
+            return { ...item, ...m, inv, cur, ret, pct, weight };
+        }).sort((a,b) => b.cur - a.cur);
+
+        document.getElementById('bento-grid').innerHTML = `
+        <!-- Summary Cards Row -->
+        <div class="bento-card" style="grid-column:span 3;grid-row:span 2;">
+            <div class="card-inner" style="justify-content:center;">
+                <p class="card-label">Portfolio Value</p>
+                <h3 class="card-value gold-gradient" style="font-size:26px;">${formatCurrency(pv)}</h3>
+                <span class="${pr>=0?'tag-green':'tag-red'}" style="margin-top:8px;align-self:flex-start;">${pr>=0?'+':''}${prPct}%</span>
+            </div>
+        </div>
+        <div class="bento-card" style="grid-column:span 3;grid-row:span 2;">
+            <div class="card-inner" style="justify-content:center;">
+                <p class="card-label">Total Invested</p>
+                <h3 class="card-value" style="font-size:26px;">${formatCurrency(pi)}</h3>
+                <span style="font-size:11px;color:var(--text-muted);font-weight:600;margin-top:4px;">${state.portfolio.length} positions</span>
+            </div>
+        </div>
+        <div class="bento-card" style="grid-column:span 3;grid-row:span 2;">
+            <div class="card-inner" style="justify-content:center;">
+                <p class="card-label">Unrealized P&L</p>
+                <h3 class="card-value" style="font-size:26px;color:${pr>=0?'var(--emerald)':'var(--red)'};">${pr>=0?'+':''}${formatCurrency(pr)}</h3>
+                <span class="${pr>=0?'tag-green':'tag-red'}" style="margin-top:8px;align-self:flex-start;">${pr>=0?'+':''}${formatCurrency(Math.abs(pr))}</span>
+            </div>
+        </div>
+        <div class="bento-card" style="grid-column:span 3;grid-row:span 2;">
+            <div class="card-inner" style="justify-content:center;">
+                <p class="card-label">Day Change</p>
+                <h3 class="card-value" style="font-size:26px;color:var(--emerald);">+$1,240</h3>
+                <span class="tag-green" style="margin-top:8px;align-self:flex-start;">+0.92%</span>
+            </div>
+        </div>
+
+        <!-- Performance Chart -->
+        <div class="bento-card" style="grid-column:span 8;grid-row:span 4;">
+            <div class="card-inner">
+                <p class="card-label">Portfolio vs Benchmark (S&P 500)</p>
+                <div style="flex:1;min-height:280px;"><canvas id="perfChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Allocation Donut -->
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 4;">
+            <div class="card-inner">
+                <p class="card-label">Asset Allocation</p>
+                <div style="flex:1;display:flex;align-items:center;justify-content:center;"><canvas id="allocChart" style="max-height:200px;"></canvas></div>
+                <div style="margin-top:14px;">
+                    ${sectors.map((s,i) => `
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                        <span style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;">
+                            <span style="width:8px;height:8px;border-radius:50%;background:${sColors[i%sColors.length]};"></span>${s.name}
+                        </span>
+                        <span style="font-size:12px;font-weight:700;color:var(--gold);">${s.pct}%</span>
+                    </div>`).join('')}
+                </div>
+            </div>
+        </div>
+
+        <!-- Full Holdings List -->
+        <div class="bento-card" style="grid-column:span 12;grid-row:span 4;">
+            <div class="card-inner">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+                    <h3 style="font-size:16px;font-weight:800;">All Holdings</h3>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn-ghost" onclick="sortHoldings('value')"><i class="fas fa-sort-amount-down"></i> By Value</button>
+                        <button class="btn-ghost" onclick="sortHoldings('returns')"><i class="fas fa-percentage"></i> By Returns</button>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;" id="holdings-cards"></div>
+            </div>
+        </div>
+
+        <!-- Weight Breakdown -->
+        <div class="bento-card" style="grid-column:span 12;grid-row:span 2;">
+            <div class="card-inner">
+                <p class="card-label">Portfolio Weight Distribution</p>
+                <div style="display:flex;border-radius:12px;overflow:hidden;height:32px;margin-top:12px;">
+                    ${details.map((d,i) => `<div style="width:${d.weight}%;background:${sColors[i%sColors.length]};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#000;min-width:${parseFloat(d.weight)>5?'0':'28'}px;" title="${d.symbol}: ${d.weight}%">${parseFloat(d.weight)>5?d.symbol:''}</div>`).join('')}
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;">
+                    ${details.map((d,i) => `<span style="font-size:10px;font-weight:700;display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:${sColors[i%sColors.length]};"></span>${d.symbol} ${d.weight}%</span>`).join('')}
+                </div>
+            </div>
+        </div>`;
+
+        renderCards(details, sColors);
+        initPerfChart();
+        initAllocChart(sectors, sColors);
+    }
+
+    function renderCards(details, colors) {
+        document.getElementById('holdings-cards').innerHTML = details.map((d, i) => `
+        <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:20px;transition:all 0.3s;" onmouseenter="this.style.borderColor='rgba(212,175,55,0.4)'" onmouseleave="this.style.borderColor='var(--glass-border)'">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div class="stock-badge" style="background:${colors[i%colors.length]}22;color:${colors[i%colors.length]};">${d.symbol}</div>
+                    <div><p style="font-size:13px;font-weight:700;">${d.name}</p><p style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">${d.sector} • ${d.weight}% weight</p></div>
+                </div>
+                <span class="${d.ret>=0?'tag-green':'tag-red'}">${d.ret>=0?'+':''}${d.pct}%</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div><p style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Qty</p><p style="font-size:14px;font-weight:700;">${d.qty}</p></div>
+                <div><p style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Avg Cost</p><p style="font-size:14px;font-weight:700;">${formatCurrency(d.avgCost)}</p></div>
+                <div><p style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Current</p><p style="font-size:14px;font-weight:800;" id="ltp-${d.symbol}">${formatCurrency(d.ltp)}</p></div>
+                <div><p style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">P&L</p><p style="font-size:14px;font-weight:800;color:${d.ret>=0?'var(--emerald)':'var(--red)'};">${d.ret>=0?'+':''}${formatCurrency(d.ret)}</p></div>
+            </div>
+        </div>`).join('');
+    }
+
+    function sortHoldings(by) {
+        if (by === 'returns') state.portfolio.sort((a,b) => { const ma=getStockMeta(a.symbol),mb=getStockMeta(b.symbol); return ((mb.ltp-b.avgCost)/b.avgCost) - ((ma.ltp-a.avgCost)/a.avgCost); });
+        else state.portfolio.sort((a,b) => (b.qty*getStockMeta(b.symbol).ltp) - (a.qty*getStockMeta(a.symbol).ltp));
+        build();
+    }
+
+    function initPerfChart() {
+        const ctx = document.getElementById('perfChart').getContext('2d');
+        const g1 = ctx.createLinearGradient(0,0,0,300); g1.addColorStop(0,'rgba(212,175,55,0.15)'); g1.addColorStop(1,'transparent');
+        const g2 = ctx.createLinearGradient(0,0,0,300); g2.addColorStop(0,'rgba(16,185,129,0.1)'); g2.addColorStop(1,'transparent');
+        new Chart(ctx, {
+            type:'line',
+            data:{labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],datasets:[
+                {label:'My Portfolio',data:[100,104,102,108,114,112,118,124,129,126,132,135],borderColor:COLORS.gold,borderWidth:2.5,pointRadius:0,tension:0.4,fill:true,backgroundColor:g1},
+                {label:'S&P 500',data:[100,101,103,105,107,106,109,112,114,113,116,118],borderColor:COLORS.emerald,borderWidth:2,pointRadius:0,tension:0.4,fill:true,backgroundColor:g2,borderDash:[5,5]}
+            ]},
+            options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94A3B8',font:{size:11}}}},scales:{x:{grid:{display:false},ticks:{color:'#475569',font:{size:10}}},y:{border:{display:false},grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#475569',font:{size:10},callback:v=>v+'%'}}}}
+        });
+    }
+
+    function initAllocChart(sectors, colors) {
+        new Chart(document.getElementById('allocChart').getContext('2d'), {
+            type:'doughnut',
+            data:{labels:sectors.map(s=>s.name),datasets:[{data:sectors.map(s=>s.value),backgroundColor:colors.slice(0,sectors.length),borderWidth:0}]},
+            options:{responsive:true,maintainAspectRatio:true,cutout:'72%',plugins:{legend:{display:false}}}
+        });
+    }
+
+    initApp(); build();
+    </script>
+    <style>
+        @media (max-width:1024px) { .bento-grid > * { grid-column: span 6 !important; } }
+        @media (max-width:768px) { .bento-grid > * { grid-column: span 1 !important; } }
+    </style>
+</body>
+</html>
