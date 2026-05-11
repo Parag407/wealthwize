@@ -128,7 +128,7 @@
 
     function renderCards(details, colors) {
         document.getElementById('holdings-cards').innerHTML = details.map((d, i) => `
-        <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:20px;transition:all 0.3s;" onmouseenter="this.style.borderColor='rgba(212,175,55,0.4)'" onmouseleave="this.style.borderColor='var(--glass-border)'">
+        <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:20px;transition:all 0.3s;cursor:pointer;" onmouseenter="this.style.borderColor='rgba(212,175,55,0.4)'" onmouseleave="this.style.borderColor='var(--glass-border)'" onclick="openAssetModal('${d.symbol}')">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <div class="stock-badge" style="background:${colors[i%colors.length]}22;color:${colors[i%colors.length]};">${d.symbol}</div>

@@ -143,12 +143,33 @@
                 <span class="tag-green" style="margin-top:8px;">Above Average</span>
                 <p style="font-size:10px;color:var(--text-muted);margin-top:8px;">Risk-adjusted return metric</p>
             </div>
+        </div>
+        
+        <!-- Advanced Market Scanner -->
+        <div class="bento-card" style="grid-column:span 12;grid-row:span 3;">
+            <div class="card-inner">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <p class="card-label" style="margin:0;">Advanced Market Scanner</p>
+                    <span style="font-size:10px;font-weight:700;color:var(--text-muted);"><i class="fas fa-satellite-dish" style="color:var(--gold);margin-right:4px;"></i> LIVE</span>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                    <div>
+                        <p style="font-size:11px;font-weight:800;color:var(--emerald);margin-bottom:12px;text-transform:uppercase;"><i class="fas fa-arrow-trend-up"></i> Top Gainers</p>
+                        <div id="scanner-gainers"></div>
+                    </div>
+                    <div>
+                        <p style="font-size:11px;font-weight:800;color:var(--red);margin-bottom:12px;text-transform:uppercase;"><i class="fas fa-arrow-trend-down"></i> Top Losers</p>
+                        <div id="scanner-losers"></div>
+                    </div>
+                </div>
+            </div>
         </div>`;
 
         initCharts(details, sectors, sColors);
     }
 
     function initCharts(details, sectors, sColors) {
+        renderMarketScanner();
         // Monthly Returns Bar
         const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         const monthData = months.map(() => (Math.random()*12-4).toFixed(1));
@@ -185,6 +206,24 @@
             data:{datasets:[{data:[72,28],backgroundColor:[COLORS.emerald,'rgba(255,255,255,0.05)'],borderWidth:0}]},
             options:{responsive:true,cutout:'78%',plugins:{legend:{display:false}}}
         });
+    }
+
+    function renderMarketScanner() {
+        const movers = getMarketMovers();
+        const renderRow = (s, isGainer) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:rgba(255,255,255,0.02);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'" onclick="openAssetModal('${s.symbol}')">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div class="stock-badge" style="width:36px;height:36px;font-size:11px;">${s.symbol}</div>
+                <div><p style="font-size:13px;font-weight:700;">${s.name}</p><p style="font-size:9px;color:var(--text-muted);">${s.sector} • RSI: ${s.rsi}</p></div>
+            </div>
+            <div style="text-align:right;">
+                <p style="font-size:14px;font-weight:800;" id="ltp-${s.symbol}">${formatCurrency(s.ltp)}</p>
+                <p style="font-size:11px;font-weight:700;color:${isGainer?'var(--emerald)':'var(--red)'};">${isGainer?'+':''}${((s.change/(s.ltp-s.change))*100).toFixed(2)}%</p>
+            </div>
+        </div>`;
+
+        document.getElementById('scanner-gainers').innerHTML = movers.gainers.map(s => renderRow(s, true)).join('');
+        document.getElementById('scanner-losers').innerHTML = movers.losers.map(s => renderRow(s, false)).join('');
     }
 
     initApp(); build();

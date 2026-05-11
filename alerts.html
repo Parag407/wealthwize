@@ -88,7 +88,7 @@
             const m = getStockMeta(a.symbol);
             const isTriggered = a.condition==='above' ? m.ltp>=a.price : m.ltp<=a.price;
             return `
-            <div style="background:var(--glass);border:1px solid ${a.active?'var(--glass-border)':'rgba(16,185,129,0.3)'};border-radius:16px;padding:20px;transition:all 0.3s;${!a.active?'opacity:0.6;':''}">
+            <div style="background:var(--glass);border:1px solid ${a.active?'var(--glass-border)':'rgba(16,185,129,0.3)'};border-radius:16px;padding:20px;transition:all 0.3s;cursor:pointer;${!a.active?'opacity:0.6;':''}" onclick="if(!event.target.closest('button')) openAssetModal('${a.symbol}')">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;">
                     <div style="display:flex;align-items:center;gap:10px;">
                         <div class="stock-badge">${a.symbol}</div>

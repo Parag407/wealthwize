@@ -103,13 +103,13 @@
     function renderCards(items, filter='all') {
         const filtered = filter==='all' ? items : items.filter(i => i.sector===filter);
         document.getElementById('watch-cards').innerHTML = filtered.map(i => `
-        <div class="watch-card" data-sector="${i.sector}" style="background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:20px;transition:all 0.3s;" onmouseenter="this.style.borderColor='rgba(212,175,55,0.4)'" onmouseleave="this.style.borderColor='var(--glass-border)'">
+        <div class="watch-card" data-sector="${i.sector}" style="background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:20px;transition:all 0.3s;cursor:pointer;" onmouseenter="this.style.borderColor='rgba(212,175,55,0.4)'" onmouseleave="this.style.borderColor='var(--glass-border)'" onclick="if(!event.target.closest('button')) openAssetModal('${i.symbol}')">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <div class="stock-badge">${i.symbol}</div>
                     <div><p style="font-size:14px;font-weight:700;">${i.name}</p><p style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">${i.sector}</p></div>
                 </div>
-                <button class="icon-btn danger" onclick="removeWatch('${i.sym}')"><i class="fas fa-times"></i></button>
+                <button class="icon-btn danger" onclick="removeWatch('${i.symbol}')"><i class="fas fa-times"></i></button>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:16px;">
                 <p style="font-size:22px;font-weight:800;" id="ltp-${i.symbol}">${formatCurrency(i.ltp)}</p>

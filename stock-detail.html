@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WealthWize | Stock Details</title>
+    <meta name="description" content="In-depth asset analysis and trading controls">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-shell" id="app-shell"></div>
+    <script src="app.js"></script>
+    <script src="components.js"></script>
+    <script>
+    const params = new URLSearchParams(window.location.search);
+    const symbol = params.get('symbol') || 'NVDA';
+    let meta = getStockMeta(symbol);
+
+    document.getElementById('app-shell').innerHTML =
+        getSidebarHTML() +
+        '<main class="main-content">' +
+            getTopBarHTML('Asset Overview', 'Deep dive into ' + symbol) +
+            '<div style="display:flex;gap:10px;margin-bottom:20px;">' +
+                '<button class="btn-ghost" onclick="window.history.back()"><i class="fas fa-arrow-left"></i> BACK</button>' +
+            '</div>' +
+            '<div class="bento-grid" id="bento-grid"></div>' +
+        '</main>' +
+        getFooterHTML() +
+        getProfileModalHTML();
+
+    function build() {
+        meta = getStockMeta(symbol); // Refresh data
+        const inWatchlist = state.watchlist.includes(symbol);
+        const position = state.portfolio.find(p => p.symbol === symbol);
+        
+        document.getElementById('bento-grid').innerHTML = `
+        <!-- Header Info -->
+        <div class="bento-card" style="grid-column:span 12;grid-row:span 2;">
+            <div class="card-inner" style="flex-direction:row;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;">
+                <div style="display:flex;align-items:center;gap:16px;">
+                    <div class="stock-badge" style="width:64px;height:64px;font-size:20px;">${meta.symbol}</div>
+                    <div>
+                        <h2 style="font-size:28px;font-weight:800;margin-bottom:4px;">${meta.name}</h2>
+                        <p style="font-size:12px;color:var(--text-muted);text-transform:uppercase;">${meta.sector} • NASDAQ</p>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <h2 style="font-size:36px;font-weight:800;" id="detail-ltp">${formatCurrency(meta.ltp)}</h2>
+                    <span class="${meta.change>=0?'tag-green':'tag-red'}" style="font-size:14px;padding:6px 12px;margin-top:6px;display:inline-block;">${meta.change>=0?'+':''}${meta.change.toFixed(2)} (${((meta.change/(meta.ltp-meta.change))*100).toFixed(2)}%)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="bento-card" style="grid-column:span 8;grid-row:span 4;">
+            <div class="card-inner">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <p class="card-label" style="margin:0;">Price Action</p>
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn-ghost chart-range-btn" data-range="1W">1W</button>
+                        <button class="btn-ghost chart-range-btn" data-range="1M">1M</button>
+                        <button class="btn-ghost chart-range-btn active-range" data-range="6M">6M</button>
+                        <button class="btn-ghost chart-range-btn" data-range="1Y">1Y</button>
+                    </div>
+                </div>
+                <div style="flex:1;min-height:300px;"><canvas id="detailChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Technical Stats -->
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 2;">
+            <div class="card-inner">
+                <p class="card-label">Key Statistics</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;">
+                    <div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:10px;">
+                        <p style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">Market Cap</p>
+                        <p style="font-size:16px;font-weight:700;">${meta.mktCap || 'N/A'}</p>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:10px;">
+                        <p style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">Volume</p>
+                        <p style="font-size:16px;font-weight:700;">${meta.vol || 'N/A'}</p>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:10px;">
+                        <p style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">P/E Ratio</p>
+                        <p style="font-size:16px;font-weight:700;">${meta.pe || 'N/A'}</p>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:10px;">
+                        <p style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">RSI (14)</p>
+                        <p style="font-size:16px;font-weight:700;color:${meta.rsi>70?'var(--red)':meta.rsi<30?'var(--emerald)':'inherit'};">${meta.rsi || 'N/A'}</p>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:10px;grid-column:span 2;">
+                        <p style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">52-Week Range</p>
+                        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:13px;font-weight:700;">
+                            <span>${meta.low52 ? formatCurrency(meta.low52) : 'N/A'}</span>
+                            <span>${meta.high52 ? formatCurrency(meta.high52) : 'N/A'}</span>
+                        </div>
+                        <div class="alloc-bar" style="margin-top:6px;height:4px;"><div class="alloc-bar-fill" style="width:75%;background:var(--gold);"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trade Controls -->
+        <div class="bento-card" style="grid-column:span 4;grid-row:span 2;">
+            <div class="card-inner">
+                <div style="display:flex;gap:10px;margin-bottom:16px;">
+                    <button class="btn-gold" style="flex:1;justify-content:center;font-size:13px;" onclick="executeTrade('buy')">BUY</button>
+                    <button class="btn-ghost" style="flex:1;justify-content:center;font-size:13px;border-color:rgba(239,68,68,0.5);color:var(--red);" onclick="executeTrade('sell')">SELL</button>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" id="trade-qty" class="form-input" value="1" min="1" oninput="updateTradeTotal()">
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);">
+                    <span style="font-size:11px;font-weight:700;color:var(--text-muted);">Estimated Total</span>
+                    <span style="font-size:18px;font-weight:800;color:var(--gold);" id="trade-total">${formatCurrency(meta.ltp)}</span>
+                </div>
+                <button class="${inWatchlist ? 'btn-ghost' : 'btn-gold'}" style="margin-top:16px;width:100%;justify-content:center;${inWatchlist?'color:var(--gold);border-color:var(--gold);':''}" onclick="toggleWatch()">
+                    <i class="fas ${inWatchlist ? 'fa-check' : 'fa-eye'}"></i> ${inWatchlist ? 'ON WATCHLIST' : 'ADD TO WATCHLIST'}
+                </button>
+            </div>
+        </div>
+
+        <!-- Position Summary -->
+        <div class="bento-card" style="grid-column:span 12;grid-row:span 1;">
+            <div class="card-inner" style="flex-direction:row;align-items:center;justify-content:space-between;">
+                <div>
+                    <p class="card-label" style="margin:0;">Your Position</p>
+                    ${position ? 
+                        `<p style="font-size:20px;font-weight:800;margin-top:6px;">${position.qty} Shares <span style="font-size:13px;color:var(--text-muted);font-weight:600;">@ ${formatCurrency(position.avgCost)} Avg</span></p>` :
+                        `<p style="font-size:14px;color:var(--text-muted);margin-top:6px;font-weight:600;">You do not currently own ${meta.symbol}.</p>`
+                    }
+                </div>
+                ${position ? `
+                <div style="text-align:right;">
+                    <p style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:700;margin-bottom:4px;">Unrealized P&L</p>
+                    ${(() => {
+                        const inv = position.qty * position.avgCost;
+                        const cur = position.qty * meta.ltp;
+                        const ret = cur - inv;
+                        const retP = inv > 0 ? ((ret/inv)*100).toFixed(2) : 0;
+                        return `<span class="${ret>=0?'tag-green':'tag-red'}">${ret>=0?'+':''}${formatCurrency(ret)} (${retP}%)</span>`;
+                    })()}
+                </div>
+                ` : ''}
+            </div>
+        </div>
+        `;
+
+        initDetailChart();
+    }
+
+    /* ═══ Chart Logic ═══ */
+    let dChart;
+    function initDetailChart() {
+        const ctx = document.getElementById('detailChart').getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 0, 350);
+        grad.addColorStop(0, meta.change >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'); 
+        grad.addColorStop(1, 'transparent');
+        
+        const generateData = (pts) => {
+            let base = meta.ltp * 0.8;
+            return Array.from({length: pts}, () => { base += (Math.random()-0.48)*meta.ltp*0.05; return base; });
+        };
+
+        const mockData = {
+            '1W': { labels: ['Mon','Tue','Wed','Thu','Fri'], data: generateData(5) },
+            '1M': { labels: Array.from({length:20},(_,i)=>i+1), data: generateData(20) },
+            '6M': { labels: ['Jul','Aug','Sep','Oct','Nov','Dec'], data: generateData(6) },
+            '1Y': { labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], data: generateData(12) }
+        };
+
+        const activeRange = document.querySelector('.chart-range-btn.active-range')?.dataset.range || '6M';
+        const lineColor = meta.change >= 0 ? COLORS.emerald : COLORS.red;
+
+        dChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: mockData[activeRange].labels, datasets: [{
+                data: mockData[activeRange].data, borderColor: lineColor, borderWidth: 3, pointRadius: 0, tension: 0.2, fill: true, backgroundColor: grad
+            }]},
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                scales: { x: { grid: { display: false }, ticks: { color: '#475569', font: { size: 10 } } }, y: { border: { display: false }, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#475569', font: { size: 10 }, callback: v=>'$'+v } } } }
+        });
+
+        document.querySelectorAll('.chart-range-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.chart-range-btn').forEach(b => b.classList.remove('active-range'));
+                e.target.classList.add('active-range');
+                const range = e.target.dataset.range;
+                dChart.data.labels = mockData[range].labels;
+                dChart.data.datasets[0].data = mockData[range].data;
+                dChart.update();
+            });
+        });
+    }
+
+    /* ═══ Actions ═══ */
+    function updateTradeTotal() {
+        const qty = parseFloat(document.getElementById('trade-qty').value) || 0;
+        document.getElementById('trade-total').textContent = formatCurrency(qty * meta.ltp);
+    }
+
+    function toggleWatch() {
+        if (state.watchlist.includes(symbol)) {
+            state.watchlist = state.watchlist.filter(s => s !== symbol);
+        } else {
+            state.watchlist.push(symbol);
+        }
+        saveState(); build();
+    }
+
+    function executeTrade(type) {
+        const qty = parseFloat(document.getElementById('trade-qty').value);
+        if (!qty || qty <= 0) return alert('Invalid quantity');
+        
+        let position = state.portfolio.find(p => p.symbol === symbol);
+        const total = qty * meta.ltp;
+
+        if (type === 'buy') {
+            if (position) {
+                const totalCost = (position.qty * position.avgCost) + total;
+                position.qty += qty;
+                position.avgCost = totalCost / position.qty;
+            } else {
+                state.portfolio.push({ symbol, qty, avgCost: meta.ltp, buyDate: new Date().toISOString().split('T')[0] });
+            }
+            state.transactions.unshift({ type: 'buy', symbol, qty, price: meta.ltp, date: new Date().toISOString().split('T')[0], total });
+            alert('Successfully bought ' + qty + ' shares of ' + symbol + '!');
+        } else {
+            if (!position || position.qty < qty) return alert('Insufficient shares to sell!');
+            position.qty -= qty;
+            if (position.qty === 0) {
+                state.portfolio = state.portfolio.filter(p => p.symbol !== symbol);
+            }
+            state.transactions.unshift({ type: 'sell', symbol, qty, price: meta.ltp, date: new Date().toISOString().split('T')[0], total });
+            alert('Successfully sold ' + qty + ' shares of ' + symbol + '!');
+        }
+        
+        saveState(); build();
+    }
+
+    initApp(); build();
+
+    // Live update hook specific to detail page
+    setInterval(() => {
+        const el = document.getElementById('detail-ltp');
+        if (el) el.textContent = formatCurrency(meta.ltp);
+        updateTradeTotal();
+    }, 3500);
+
+    </script>
+    <style>
+        @media (max-width:1024px) { .bento-grid > * { grid-column:span 6!important; } }
+        @media (max-width:768px) { .bento-grid > * { grid-column:span 12!important; } }
+    </style>
+</body>
+</html>

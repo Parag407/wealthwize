@@ -5,22 +5,22 @@
 const COLORS = { gold: '#D4AF37', goldLight: '#F9E79F', emerald: '#10B981', red: '#EF4444', bg: '#05100B' };
 
 const stockMaster = [
-    { symbol: 'NVDA', name: 'Nvidia Corp', ltp: 898.94, change: 12.4, sector: 'Tech', pe: 64.2, mktCap: '2.2T', vol: '42.3M' },
-    { symbol: 'MSFT', name: 'Microsoft', ltp: 420.17, change: 4.5, sector: 'Tech', pe: 36.8, mktCap: '3.1T', vol: '22.1M' },
-    { symbol: 'BTC', name: 'Bitcoin', ltp: 64204.50, change: 2100.2, sector: 'Crypto', pe: 0, mktCap: '1.3T', vol: '28.5B' },
-    { symbol: 'AAPL', name: 'Apple Inc', ltp: 182.41, change: -2.1, sector: 'Tech', pe: 28.5, mktCap: '2.8T', vol: '55.2M' },
-    { symbol: 'TSLA', name: 'Tesla Motors', ltp: 174.12, change: -5.4, sector: 'Auto', pe: 42.1, mktCap: '554B', vol: '98.4M' },
-    { symbol: 'RELIANCE', name: 'Reliance Ind', ltp: 2980.45, change: 15.2, sector: 'Energy', pe: 28.9, mktCap: '20.1T₹', vol: '8.2M' },
-    { symbol: 'ETH', name: 'Ethereum', ltp: 3452.12, change: 85.4, sector: 'Crypto', pe: 0, mktCap: '415B', vol: '14.2B' },
-    { symbol: 'AMZN', name: 'Amazon', ltp: 178.15, change: 3.2, sector: 'Retail', pe: 52.3, mktCap: '1.9T', vol: '48.7M' },
-    { symbol: 'GOOGL', name: 'Alphabet', ltp: 154.22, change: 0.8, sector: 'Tech', pe: 24.6, mktCap: '1.9T', vol: '25.1M' },
-    { symbol: 'META', name: 'Meta Platforms', ltp: 485.58, change: 9.6, sector: 'Tech', pe: 33.1, mktCap: '1.2T', vol: '18.9M' },
-    { symbol: 'JPM', name: 'JPMorgan', ltp: 198.45, change: -1.2, sector: 'Finance', pe: 11.8, mktCap: '572B', vol: '10.3M' },
-    { symbol: 'XOM', name: 'Exxon Mobil', ltp: 121.45, change: -0.5, sector: 'Energy', pe: 13.5, mktCap: '512B', vol: '15.6M' },
-    { symbol: 'V', name: 'Visa Inc', ltp: 278.92, change: 3.8, sector: 'Finance', pe: 30.2, mktCap: '575B', vol: '7.8M' },
-    { symbol: 'WMT', name: 'Walmart', ltp: 165.30, change: 1.4, sector: 'Retail', pe: 27.4, mktCap: '445B', vol: '9.1M' },
-    { symbol: 'SOL', name: 'Solana', ltp: 142.85, change: 6.3, sector: 'Crypto', pe: 0, mktCap: '63B', vol: '3.2B' },
-    { symbol: 'NFLX', name: 'Netflix', ltp: 628.40, change: 11.2, sector: 'Tech', pe: 44.7, mktCap: '272B', vol: '6.5M' },
+    { symbol: 'NVDA', name: 'Nvidia Corp', ltp: 898.94, change: 12.4, sector: 'Tech', pe: 64.2, mktCap: '2.2T', vol: '42.3M', high52: 974.00, low52: 262.20, rsi: 68 },
+    { symbol: 'MSFT', name: 'Microsoft', ltp: 420.17, change: 4.5, sector: 'Tech', pe: 36.8, mktCap: '3.1T', vol: '22.1M', high52: 430.82, low52: 283.33, rsi: 55 },
+    { symbol: 'BTC', name: 'Bitcoin', ltp: 64204.50, change: 2100.2, sector: 'Crypto', pe: 0, mktCap: '1.3T', vol: '28.5B', high52: 73750, low52: 25000, rsi: 48 },
+    { symbol: 'AAPL', name: 'Apple Inc', ltp: 182.41, change: -2.1, sector: 'Tech', pe: 28.5, mktCap: '2.8T', vol: '55.2M', high52: 199.62, low52: 165.67, rsi: 41 },
+    { symbol: 'TSLA', name: 'Tesla Motors', ltp: 174.12, change: -5.4, sector: 'Auto', pe: 42.1, mktCap: '554B', vol: '98.4M', high52: 299.29, low52: 152.37, rsi: 35 },
+    { symbol: 'RELIANCE', name: 'Reliance Ind', ltp: 2980.45, change: 15.2, sector: 'Energy', pe: 28.9, mktCap: '20.1T₹', vol: '8.2M', high52: 3024.90, low52: 2220.30, rsi: 62 },
+    { symbol: 'ETH', name: 'Ethereum', ltp: 3452.12, change: 85.4, sector: 'Crypto', pe: 0, mktCap: '415B', vol: '14.2B', high52: 4093, low52: 1520, rsi: 52 },
+    { symbol: 'AMZN', name: 'Amazon', ltp: 178.15, change: 3.2, sector: 'Retail', pe: 52.3, mktCap: '1.9T', vol: '48.7M', high52: 180.14, low52: 101.15, rsi: 65 },
+    { symbol: 'GOOGL', name: 'Alphabet', ltp: 154.22, change: 0.8, sector: 'Tech', pe: 24.6, mktCap: '1.9T', vol: '25.1M', high52: 155.20, low52: 102.63, rsi: 58 },
+    { symbol: 'META', name: 'Meta Platforms', ltp: 485.58, change: 9.6, sector: 'Tech', pe: 33.1, mktCap: '1.2T', vol: '18.9M', high52: 502.30, low52: 207.13, rsi: 72 },
+    { symbol: 'JPM', name: 'JPMorgan', ltp: 198.45, change: -1.2, sector: 'Finance', pe: 11.8, mktCap: '572B', vol: '10.3M', high52: 200.30, low52: 135.12, rsi: 49 },
+    { symbol: 'XOM', name: 'Exxon Mobil', ltp: 121.45, change: -0.5, sector: 'Energy', pe: 13.5, mktCap: '512B', vol: '15.6M', high52: 123.75, low52: 95.77, rsi: 51 },
+    { symbol: 'V', name: 'Visa Inc', ltp: 278.92, change: 3.8, sector: 'Finance', pe: 30.2, mktCap: '575B', vol: '7.8M', high52: 290.96, low52: 220.15, rsi: 59 },
+    { symbol: 'WMT', name: 'Walmart', ltp: 165.30, change: 1.4, sector: 'Retail', pe: 27.4, mktCap: '445B', vol: '9.1M', high52: 170.20, low52: 145.30, rsi: 61 },
+    { symbol: 'SOL', name: 'Solana', ltp: 142.85, change: 6.3, sector: 'Crypto', pe: 0, mktCap: '63B', vol: '3.2B', high52: 210.12, low52: 18.50, rsi: 44 },
+    { symbol: 'NFLX', name: 'Netflix', ltp: 628.40, change: 11.2, sector: 'Tech', pe: 44.7, mktCap: '272B', vol: '6.5M', high52: 639.00, low52: 315.62, rsi: 69 },
 ];
 
 const defaultPortfolio = [
@@ -119,6 +119,11 @@ function getTopPerformer() {
         if (pct > bestPct) { bestPct = pct; best = { ...item, ...meta, returnPct: pct }; }
     });
     return best;
+}
+
+function getMarketMovers() {
+    const sorted = [...stockMaster].sort((a, b) => (b.change / b.ltp) - (a.change / a.ltp));
+    return { gainers: sorted.slice(0, 3), losers: sorted.slice(-3).reverse() };
 }
 
 /* ═══ Sidebar Navigation ═══ */
@@ -263,62 +268,7 @@ function initGlobalSearch() {
 }
 
 function openAssetModal(symbol) {
-    const meta = getStockMeta(symbol);
-    const inWatchlist = state.watchlist.includes(symbol);
-    const inPortfolio = state.portfolio.some(p => p.symbol === symbol);
-    
-    if (!document.getElementById('asset-modal-container')) {
-        const div = document.createElement('div');
-        div.id = 'asset-modal-container';
-        document.body.appendChild(div);
-    }
-    
-    document.getElementById('asset-modal-container').innerHTML = `
-    <div id="asset-modal" class="modal-overlay" style="display:flex;opacity:0;transition:opacity 0.3s;">
-        <div class="modal-box" style="transform:scale(0.95);transition:transform 0.3s">
-            <div class="modal-header">
-                <h3>Asset Details</h3>
-                <button class="modal-close" onclick="closeModal('asset-modal')"><i class="fas fa-times"></i></button>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <div class="stock-badge" style="width:48px;height:48px;font-size:14px;">${meta.symbol}</div>
-                    <div>
-                        <p style="font-size:18px;font-weight:800;">${meta.name}</p>
-                        <p style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">${meta.sector}</p>
-                    </div>
-                </div>
-                <div style="text-align:right;">
-                    <p style="font-size:24px;font-weight:800;">${formatCurrency(meta.ltp)}</p>
-                    <span class="${meta.change>=0?'tag-green':'tag-red'}">${meta.change>=0?'+':''}${meta.change.toFixed(2)}</span>
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
-                <div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:10px;">
-                    <p style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">P/E Ratio</p>
-                    <p style="font-size:14px;font-weight:700;">${meta.pe || 'N/A'}</p>
-                </div>
-                <div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:10px;">
-                    <p style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">Market Cap</p>
-                    <p style="font-size:14px;font-weight:700;">${meta.mktCap || 'N/A'}</p>
-                </div>
-            </div>
-            <div style="display:flex;gap:10px;">
-                <button class="${inWatchlist ? 'btn-ghost' : 'btn-gold'}" style="flex:1;justify-content:center;${inWatchlist ? 'color:var(--gold);border-color:var(--gold);' : ''}" onclick="toggleWatchlistFromModal('${meta.symbol}')">
-                    <i class="fas ${inWatchlist ? 'fa-check' : 'fa-eye'}"></i> ${inWatchlist ? 'WATCHING' : 'WATCHLIST'}
-                </button>
-                <button class="btn-ghost" style="flex:1;justify-content:center;" onclick="window.location.href='./portfolio.html'">
-                    <i class="fas ${inPortfolio ? 'fa-briefcase' : 'fa-plus'}"></i> ${inPortfolio ? 'IN PORTFOLIO' : 'BUY'}
-                </button>
-            </div>
-        </div>
-    </div>`;
-    
-    requestAnimationFrame(() => {
-        const m = document.getElementById('asset-modal');
-        m.style.opacity = '1';
-        m.querySelector('.modal-box').style.transform = 'scale(1)';
-    });
+    window.location.href = './stock-detail.html?symbol=' + symbol;
 }
 
 window.toggleWatchlistFromModal = function(sym) {

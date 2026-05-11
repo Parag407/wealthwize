@@ -119,7 +119,7 @@
                     <div class="activity-icon" style="background:${bgMap[tx.type]};color:${colorMap[tx.type]};"><i class="fas fa-${iconMap[tx.type]}"></i></div>
                     <span style="font-size:12px;font-weight:700;text-transform:uppercase;color:${colorMap[tx.type]};">${tx.type}</span>
                 </div></td>
-                <td><div style="display:flex;align-items:center;gap:8px;"><div class="stock-badge" style="width:30px;height:30px;font-size:8px;">${tx.symbol}</div><span style="font-size:13px;font-weight:700;">${tx.symbol}</span></div></td>
+                <td style="cursor:pointer;" onclick="openAssetModal('${tx.symbol}')"><div style="display:flex;align-items:center;gap:8px;"><div class="stock-badge" style="width:30px;height:30px;font-size:8px;">${tx.symbol}</div><span style="font-size:13px;font-weight:700;">${tx.symbol}</span></div></td>
                 <td style="font-size:13px;font-weight:600;color:var(--text-muted);">${tx.date}</td>
                 <td style="font-size:13px;font-weight:700;">${tx.qty}</td>
                 <td style="font-size:13px;font-weight:600;">${formatCurrency(tx.price)}</td>

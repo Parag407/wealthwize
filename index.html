@@ -117,7 +117,7 @@
             <div class="card-inner">
                 <p class="card-label">Top Performer</p>
                 ${top ? `
-                <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
+                <div style="display:flex;align-items:center;gap:12px;margin-top:8px;cursor:pointer;" onclick="openAssetModal('${top.symbol}')">
                     <div class="stock-badge">${top.symbol}</div>
                     <div>
                         <p style="font-size:14px;font-weight:700;">${top.name}</p>
@@ -262,7 +262,7 @@
             const ret = cur - inv;
             const retP = inv > 0 ? ((ret / inv) * 100).toFixed(1) : 0;
             return `<tr>
-                <td><div style="display:flex;align-items:center;gap:10px;"><div class="stock-badge">${item.symbol}</div><div><p style="font-size:13px;font-weight:700;">${m.name}</p><p style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">${m.sector}</p></div></div></td>
+                <td style="cursor:pointer;" onclick="openAssetModal('${item.symbol}')"><div style="display:flex;align-items:center;gap:10px;"><div class="stock-badge">${item.symbol}</div><div><p style="font-size:13px;font-weight:700;">${m.name}</p><p style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">${m.sector}</p></div></div></td>
                 <td style="font-size:13px;font-weight:700;">${item.qty}</td>
                 <td style="font-size:13px;font-weight:600;color:var(--text-muted);">${formatCurrency(item.avgCost)}</td>
                 <td style="font-size:13px;font-weight:800;" id="ltp-${item.symbol}">${formatCurrency(m.ltp)}</td>
