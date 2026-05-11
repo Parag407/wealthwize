@@ -46,7 +46,7 @@
         '<main class="main-content">' +
             getTopBarHTML('Price Alerts', 'Get notified on price movements') +
             '<div style="display:flex;justify-content:flex-end;margin-bottom:20px;">' +
-                '<button class="btn-gold" onclick="selectedAlertSymbol=null;document.getElementById(\\\'alert-symbol\\\').value=\\\'\\\';document.getElementById(\\\'alert-price\\\').value=\\\'\\\';openModal(\\\'add-alert-modal\\\')"><i class="fas fa-plus"></i> NEW ALERT</button>' +
+                '<button class="btn-gold" onclick="selectedAlertSymbol=null;document.getElementById(\'alert-symbol\').value=\'\';document.getElementById(\'alert-price\').value=\'\';openModal(\'add-alert-modal\')"><i class="fas fa-plus"></i> NEW ALERT</button>' +
             '</div>' +
             '<div class="bento-grid" id="bento-grid"></div>' +
         '</main>' +
@@ -125,11 +125,20 @@
     function deleteAlert(i) { state.alerts.splice(i, 1); saveState(); build(); }
 
     function saveAlert() {
-        if (!selectedAlertSymbol) return;
+        let sym = selectedAlertSymbol;
+        const rawVal = document.getElementById('alert-symbol').value.toUpperCase().trim();
+        
+        if (!sym) {
+            const found = stockMaster.find(s => s.symbol === rawVal || s.name.toUpperCase() === rawVal);
+            if (found) sym = found.symbol;
+            else { alert('Please select or type a valid stock symbol.'); return; }
+        }
+        
         const price = parseFloat(document.getElementById('alert-price').value);
         const condition = document.getElementById('alert-condition').value;
-        if (!price) return;
-        state.alerts.push({ symbol: selectedAlertSymbol, condition, price, active: true });
+        if (!price) { alert('Please enter a target price.'); return; }
+        
+        state.alerts.push({ symbol: sym, condition, price, active: true });
         saveState(); closeModal('add-alert-modal'); build();
     }
 

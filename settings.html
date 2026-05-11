@@ -20,7 +20,27 @@
             '<div class="bento-grid" id="bento-grid"></div>' +
         '</main>' +
         getFooterHTML() +
-        getProfileModalHTML();
+        getProfileModalHTML() +
+        `<div id="add-goal-modal" class="modal-overlay" style="opacity:0;transition:opacity 0.3s">
+            <div class="modal-box" style="transform:scale(0.95);transition:transform 0.3s">
+                <div class="modal-header"><h3>Add New Goal</h3><button class="modal-close" onclick="closeModal('add-goal-modal')"><i class="fas fa-times"></i></button></div>
+                <div class="form-group">
+                    <label class="form-label">Goal Name</label>
+                    <input type="text" id="goal-name" class="form-input" placeholder="e.g. Dream Home">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group">
+                        <label class="form-label">Target Amount ($)</label>
+                        <input type="number" id="goal-target" class="form-input" placeholder="e.g. 500000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Current Progress ($)</label>
+                        <input type="number" id="goal-current" class="form-input" placeholder="e.g. 10000">
+                    </div>
+                </div>
+                <button class="btn-gold" style="width:100%;justify-content:center;padding:14px;" onclick="saveNewGoal()">SAVE GOAL</button>
+            </div>
+        </div>`;
 
     function build() {
         document.getElementById('bento-grid').innerHTML = `
@@ -53,7 +73,7 @@
             <div class="card-inner">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                     <p class="card-label" style="margin:0;">Financial Goals</p>
-                    <button class="btn-gold" style="padding:8px 16px;font-size:10px;" onclick="addGoal()"><i class="fas fa-plus"></i> ADD</button>
+                    <button class="btn-gold" style="padding:8px 16px;font-size:10px;" onclick="openAddGoalModal()"><i class="fas fa-plus"></i> ADD</button>
                 </div>
                 <div id="goals-list"></div>
             </div>
@@ -136,15 +156,25 @@
         }).join('') || '<p style="color:var(--text-muted);font-size:12px;text-align:center;padding:20px;">No goals set.</p>';
     }
 
-    function addGoal() {
-        const name = prompt('Goal name:');
-        if (!name) return;
-        const target = parseFloat(prompt('Target amount ($):'));
-        if (!target || target <= 0) return;
-        const current = parseFloat(prompt('Current progress ($):')) || 0;
+    function openAddGoalModal() {
+        document.getElementById('goal-name').value = '';
+        document.getElementById('goal-target').value = '';
+        document.getElementById('goal-current').value = '';
+        openModal('add-goal-modal');
+    }
+
+    function saveNewGoal() {
+        const name = document.getElementById('goal-name').value.trim();
+        const target = parseFloat(document.getElementById('goal-target').value);
+        const current = parseFloat(document.getElementById('goal-current').value) || 0;
+        
+        if (!name) { alert('Please enter a goal name.'); return; }
+        if (!target || target <= 0) { alert('Please enter a valid target amount.'); return; }
+        if (current < 0) { alert('Current progress cannot be negative.'); return; }
+
         const colors = ['#D4AF37','#10B981','#818CF8','#F59E0B','#06B6D4'];
         state.goals.push({ name, target, current, color: colors[state.goals.length % colors.length] });
-        saveState(); build();
+        saveState(); closeModal('add-goal-modal'); build();
     }
 
     function exportData() {
