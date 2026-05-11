@@ -276,18 +276,45 @@
     /* ═══ Charts ═══ */
     let mainChart, sectorChartInst;
 
+    const chartMockData = {
+        '1Y': { labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], data: [640,655,630,680,710,690,740,780,810,790,830,842] },
+        '6M': { labels: ['Jul','Aug','Sep','Oct','Nov','Dec'], data: [740,780,810,790,830,842] },
+        '1M': { labels: ['Week 1','Week 2','Week 3','Week 4'], data: [810,825,840,842] }
+    };
+
     function initPortfolioChart() {
         const ctx = document.getElementById('portfolioChart').getContext('2d');
         const grad = ctx.createLinearGradient(0, 0, 0, 350);
         grad.addColorStop(0, 'rgba(212,175,55,0.18)'); grad.addColorStop(1, 'transparent');
+        
+        if (mainChart) mainChart.destroy();
+        
+        const activeRange = document.querySelector('.chart-range-btn.active-range')?.dataset.range || '1Y';
+        
         mainChart = new Chart(ctx, {
             type: 'line',
-            data: { labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], datasets: [{
-                data: [640,655,630,680,710,690,740,780,810,790,830,842], borderColor: COLORS.gold, borderWidth: 3, pointRadius: 0, tension: 0.4, fill: true, backgroundColor: grad
+            data: { labels: chartMockData[activeRange].labels, datasets: [{
+                data: chartMockData[activeRange].data, borderColor: COLORS.gold, borderWidth: 3, pointRadius: 0, tension: 0.4, fill: true, backgroundColor: grad
             }]},
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
                 scales: { x: { grid: { display: false }, ticks: { color: '#475569', font: { size: 10 } } }, y: { border: { display: false }, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { display: false } } } }
         });
+
+        document.querySelectorAll('.chart-range-btn').forEach(btn => {
+            btn.removeEventListener('click', handleRangeClick);
+            btn.addEventListener('click', handleRangeClick);
+        });
+    }
+
+    function handleRangeClick(e) {
+        document.querySelectorAll('.chart-range-btn').forEach(b => b.classList.remove('active-range'));
+        e.target.classList.add('active-range');
+        const range = e.target.dataset.range;
+        if(mainChart && chartMockData[range]) {
+            mainChart.data.labels = chartMockData[range].labels;
+            mainChart.data.datasets[0].data = chartMockData[range].data;
+            mainChart.update();
+        }
     }
 
     function initSectorChart(sectors, colors) {

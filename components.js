@@ -44,9 +44,10 @@ function getTopBarHTML(title, subtitle) {
                 <p>${subtitle}</p>
             </div>
         </div>
-        <div class="top-bar-search">
+        <div class="top-bar-search" style="position:relative;">
             <i class="fas fa-search"></i>
-            <input type="text" id="global-search" placeholder="Search markets, stocks, crypto...">
+            <input type="text" id="global-search" placeholder="Search markets, stocks, crypto..." autocomplete="off">
+            <div id="global-search-suggestions" class="suggestions-dropdown custom-scrollbar" style="top:40px;left:0;right:0;max-height:350px;"></div>
         </div>
         <div class="top-bar-right">
             <div class="live-badge"><div class="live-dot"></div><span>MARKETS LIVE</span></div>

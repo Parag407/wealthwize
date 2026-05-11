@@ -229,11 +229,115 @@ function animateCards() {
     });
 }
 
+/* ═══ Global Search & Asset Modal ═══ */
+function initGlobalSearch() {
+    const input = document.getElementById('global-search');
+    const box = document.getElementById('global-search-suggestions');
+    if (!input || !box) return;
+
+    input.addEventListener('input', e => {
+        const v = e.target.value.toUpperCase();
+        box.innerHTML = '';
+        if (!v) { box.classList.remove('show'); return; }
+        const f = stockMaster.filter(s => s.symbol.includes(v) || s.name.toUpperCase().includes(v));
+        if (f.length) {
+            box.classList.add('show');
+            f.forEach(s => {
+                const d = document.createElement('div'); d.className = 'suggestion-item';
+                d.innerHTML = `<span><strong>${s.symbol}</strong> — ${s.name}</span><span style="font-size:11px;color:var(--text-muted);">${formatCurrency(s.ltp)}</span>`;
+                d.onclick = () => { 
+                    box.classList.remove('show'); 
+                    input.value = '';
+                    openAssetModal(s.symbol); 
+                };
+                box.appendChild(d);
+            });
+        } else {
+            box.classList.remove('show');
+        }
+    });
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.top-bar-search')) box.classList.remove('show');
+    });
+}
+
+function openAssetModal(symbol) {
+    const meta = getStockMeta(symbol);
+    const inWatchlist = state.watchlist.includes(symbol);
+    const inPortfolio = state.portfolio.some(p => p.symbol === symbol);
+    
+    if (!document.getElementById('asset-modal-container')) {
+        const div = document.createElement('div');
+        div.id = 'asset-modal-container';
+        document.body.appendChild(div);
+    }
+    
+    document.getElementById('asset-modal-container').innerHTML = `
+    <div id="asset-modal" class="modal-overlay" style="display:flex;opacity:0;transition:opacity 0.3s;">
+        <div class="modal-box" style="transform:scale(0.95);transition:transform 0.3s">
+            <div class="modal-header">
+                <h3>Asset Details</h3>
+                <button class="modal-close" onclick="closeModal('asset-modal')"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div class="stock-badge" style="width:48px;height:48px;font-size:14px;">${meta.symbol}</div>
+                    <div>
+                        <p style="font-size:18px;font-weight:800;">${meta.name}</p>
+                        <p style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">${meta.sector}</p>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <p style="font-size:24px;font-weight:800;">${formatCurrency(meta.ltp)}</p>
+                    <span class="${meta.change>=0?'tag-green':'tag-red'}">${meta.change>=0?'+':''}${meta.change.toFixed(2)}</span>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+                <div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:10px;">
+                    <p style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">P/E Ratio</p>
+                    <p style="font-size:14px;font-weight:700;">${meta.pe || 'N/A'}</p>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);padding:12px;border-radius:10px;">
+                    <p style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">Market Cap</p>
+                    <p style="font-size:14px;font-weight:700;">${meta.mktCap || 'N/A'}</p>
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button class="${inWatchlist ? 'btn-ghost' : 'btn-gold'}" style="flex:1;justify-content:center;${inWatchlist ? 'color:var(--gold);border-color:var(--gold);' : ''}" onclick="toggleWatchlistFromModal('${meta.symbol}')">
+                    <i class="fas ${inWatchlist ? 'fa-check' : 'fa-eye'}"></i> ${inWatchlist ? 'WATCHING' : 'WATCHLIST'}
+                </button>
+                <button class="btn-ghost" style="flex:1;justify-content:center;" onclick="window.location.href='./portfolio.html'">
+                    <i class="fas ${inPortfolio ? 'fa-briefcase' : 'fa-plus'}"></i> ${inPortfolio ? 'IN PORTFOLIO' : 'BUY'}
+                </button>
+            </div>
+        </div>
+    </div>`;
+    
+    requestAnimationFrame(() => {
+        const m = document.getElementById('asset-modal');
+        m.style.opacity = '1';
+        m.querySelector('.modal-box').style.transform = 'scale(1)';
+    });
+}
+
+window.toggleWatchlistFromModal = function(sym) {
+    if (state.watchlist.includes(sym)) {
+        state.watchlist = state.watchlist.filter(s => s !== sym);
+    } else {
+        state.watchlist.push(sym);
+    }
+    saveState();
+    if (typeof build === 'function') build();
+    openAssetModal(sym);
+};
+
 /* ═══ Boot ═══ */
 function initApp() {
     loadState();
     initSidebar();
     animateNewsTicker();
     startLiveUpdates();
+    initGlobalSearch();
     animateCards();
 }
